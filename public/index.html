@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Timelapse URL - Create Timelapse from Changing Images</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+        
+        .container {
+            background: white;
+            border-radius: 12px;
+            padding: 40px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            max-width: 600px;
+            width: 100%;
+        }
+        
+        h1 {
+            color: #333;
+            margin-bottom: 10px;
+            font-size: 28px;
+        }
+        
+        .subtitle {
+            color: #666;
+            margin-bottom: 30px;
+            font-size: 14px;
+        }
+        
+        .form-group {
+            margin-bottom: 20px;
+        }
+        
+        label {
+            display: block;
+            margin-bottom: 8px;
+            color: #333;
+            font-weight: 500;
+        }
+        
+        input[type="text"] {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e0e0e0;
+            border-radius: 6px;
+            font-size: 16px;
+            transition: border-color 0.3s;
+        }
+        
+        input[type="text"]:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+        
+        button {
+            width: 100%;
+            padding: 14px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 6px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
+        }
+        
+        button:active {
+            transform: translateY(0);
+        }
+        
+        button:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+        
+        .example {
+            margin-top: 20px;
+            padding: 15px;
+            background: #f5f5f5;
+            border-radius: 6px;
+            font-size: 13px;
+            color: #666;
+        }
+        
+        .example strong {
+            color: #333;
+        }
+        
+        .error {
+            color: #d32f2f;
+            margin-top: 10px;
+            font-size: 14px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎬 Timelapse URL</h1>
+        <p class="subtitle">Create a timelapse from any image URL that changes over time</p>
+        
+        <form id="urlForm">
+            <div class="form-group">
+                <label for="imageUrl">Image URL</label>
+                <input 
+                    type="text" 
+                    id="imageUrl" 
+                    name="imageUrl" 
+                    placeholder="https://example.com/webcam.jpg"
+                    required
+                >
+            </div>
+            
+            <button type="submit" id="submitBtn">Start Capturing</button>
+            
+            <div class="error" id="error" style="display: none;"></div>
+        </form>
+        
+        <div class="example">
+            <strong>Examples:</strong><br>
+            • Webcam feed that updates periodically<br>
+            • Weather radar image<br>
+            • Construction site camera<br>
+            • Any image URL that changes over time
+        </div>
+    </div>
+    
+    <script>
+        const form = document.getElementById('urlForm');
+        const submitBtn = document.getElementById('submitBtn');
+        const errorDiv = document.getElementById('error');
+        
+        form.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const url = document.getElementById('imageUrl').value.trim();
+            
+            if (!url) {
+                showError('Please enter a valid URL');
+                return;
+            }
+            
+            if (!url.startsWith('http://') && !url.startsWith('https://')) {
+                showError('URL must start with http:// or https://');
+                return;
+            }
+            
+            submitBtn.disabled = true;
+            submitBtn.textContent = 'Starting...';
+            errorDiv.style.display = 'none';
+            
+            try {
+                const response = await fetch('/api/start', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ url }),
+                });
+                
+                if (!response.ok) {
+                    throw new Error('Failed to start session');
+                }
+                
+                const data = await response.json();
+                
+                // Redirect to capture page
+                window.location.href = `/capture.html?sessionId=${data.sessionId}`;
+                
+            } catch (error) {
+                showError('Error: ' + error.message);
+                submitBtn.disabled = false;
+                submitBtn.textContent = 'Start Capturing';
+            }
+        });
+        
+        function showError(message) {
+            errorDiv.textContent = message;
+            errorDiv.style.display = 'block';
+        }
+    </script>
+</body>
+</html>

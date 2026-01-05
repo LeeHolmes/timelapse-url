@@ -1,0 +1,437 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Timelapse Capture - Live View</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: #1a1a1a;
+            color: white;
+            padding: 20px;
+        }
+        
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        
+        h1 {
+            font-size: 28px;
+            margin-bottom: 10px;
+        }
+        
+        .info {
+            color: #999;
+            font-size: 14px;
+        }
+        
+        .url-display {
+            background: #2a2a2a;
+            padding: 10px 15px;
+            border-radius: 6px;
+            margin: 10px auto;
+            max-width: 800px;
+            word-break: break-all;
+            font-size: 13px;
+        }
+        
+        .controls {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        
+        .btn {
+            padding: 12px 24px;
+            margin: 0 10px;
+            border: none;
+            border-radius: 6px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+        
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
+        }
+        
+        .btn-secondary {
+            background: #444;
+            color: white;
+        }
+        
+        .btn-secondary:hover {
+            background: #555;
+        }
+        
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+        
+        .stats {
+            text-align: center;
+            margin-bottom: 20px;
+            color: #999;
+        }
+        
+        .stats strong {
+            color: #667eea;
+        }
+        
+        .container {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            max-width: 1600px;
+            margin: 0 auto;
+        }
+        
+        .panel {
+            background: #2a2a2a;
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+        }
+        
+        .panel h2 {
+            margin-bottom: 15px;
+            font-size: 18px;
+            color: #667eea;
+        }
+        
+        .image-container {
+            background: #1a1a1a;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 400px;
+            position: relative;
+        }
+        
+        .image-container img {
+            max-width: 100%;
+            max-height: 600px;
+            border-radius: 8px;
+            display: block;
+        }
+        
+        .placeholder {
+            color: #666;
+            text-align: center;
+            padding: 40px;
+        }
+        
+        .status {
+            margin-top: 15px;
+            padding: 10px;
+            background: #1a1a1a;
+            border-radius: 6px;
+            text-align: center;
+            font-size: 13px;
+        }
+        
+        .status.capturing {
+            color: #4caf50;
+        }
+        
+        .status.idle {
+            color: #999;
+        }
+        
+        .playback-controls {
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .playback-controls label {
+            color: #999;
+            font-size: 14px;
+        }
+        
+        .playback-controls select {
+            background: #1a1a1a;
+            color: white;
+            border: 1px solid #444;
+            border-radius: 4px;
+            padding: 6px 12px;
+            font-size: 14px;
+            cursor: pointer;
+        }
+        
+        .playback-controls select:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+        
+        .auto-capture-info {
+            background: #2a2a2a;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 20px auto;
+            max-width: 800px;
+            text-align: center;
+            font-size: 14px;
+            color: #999;
+        }
+        
+        @media (max-width: 1024px) {
+            .container {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>🎬 Timelapse Capture</h1>
+        <div class="url-display" id="urlDisplay">Loading...</div>
+        <div class="info">Images are saved locally in: <span id="dirName">...</span></div>
+    </div>
+    
+    <div class="stats">
+        <strong id="imageCount">0</strong> images captured
+    </div>
+    
+    <div class="controls">
+        <button class="btn btn-primary" id="captureBtn">📸 Capture Now</button>
+        <button class="btn btn-secondary" id="stopAutoBtn">⏸ Stop Auto-Capture</button>
+    </div>
+    
+    <div class="auto-capture-info" id="autoInfo">
+        Auto-capturing every 30 seconds... Next capture in <strong id="countdown">30</strong> seconds
+    </div>
+    
+    <div class="container">
+        <div class="panel">
+            <h2>Current Image</h2>
+            <div class="image-container" id="currentImageContainer">
+                <div class="placeholder">Click "Capture Now" to capture the first image</div>
+            </div>
+            <div class="status idle" id="status">Ready to capture</div>
+        </div>
+        
+        <div class="panel">
+            <h2>Timelapse GIF</h2>
+            <div class="playback-controls">
+                <label for="playbackSpeed">Playback Speed:</label>
+                <select id="playbackSpeed">
+                    <option value="0.25">0.25x (Slower)</option>
+                    <option value="0.5">0.5x (Slow)</option>
+                    <option value="1" selected>1x (Normal)</option>
+                    <option value="2">2x (Fast)</option>
+                    <option value="4">4x (Faster)</option>
+                </select>
+            </div>
+            <div class="image-container" id="gifContainer">
+                <div class="placeholder">The animated GIF will appear here after capturing multiple images</div>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        const urlParams = new URLSearchParams(window.location.search);
+        const sessionId = urlParams.get('sessionId');
+        
+        if (!sessionId) {
+            alert('No session ID provided');
+            window.location.href = '/';
+        }
+        
+        let autoCapture = false;
+        let autoTimer = null;
+        let countdownTimer = null;
+        let nextCaptureTime = 0;
+        let currentPlaybackSpeed = 1; // Store current playback speed
+        
+        // Load session info
+        async function loadSessionInfo() {
+            try {
+                const response = await fetch(`/api/session/${sessionId}`);
+                const data = await response.json();
+                
+                document.getElementById('urlDisplay').textContent = data.url;
+                document.getElementById('dirName').textContent = `captures/${data.dirName}`;
+                document.getElementById('imageCount').textContent = data.imageCount;
+                
+                // Load latest image and GIF if they exist
+                if (data.imageCount > 0) {
+                    updateImages(data.dirName, data.latestImage);
+                    document.getElementById('status').textContent = `${data.imageCount} images already captured - ready for more`;
+                }
+            } catch (error) {
+                console.error('Error loading session info:', error);
+            }
+        }
+        
+        // Capture a new image
+        async function captureImage() {
+            const captureBtn = document.getElementById('captureBtn');
+            const status = document.getElementById('status');
+            
+            captureBtn.disabled = true;
+            status.className = 'status capturing';
+            status.textContent = '📸 Capturing...';
+            
+            try {
+                const response = await fetch(`/api/capture/${sessionId}`, {
+                    method: 'POST',
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    document.getElementById('imageCount').textContent = data.imageCount;
+                    
+                    // Reload session info to get directory name and update images
+                    await loadSessionInfo();
+                    
+                    // Regenerate GIF with current playback speed if not default
+                    if (currentPlaybackSpeed !== 1) {
+                        await fetch(`/api/generate-gif/${sessionId}`, {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                            },
+                            body: JSON.stringify({ speed: currentPlaybackSpeed }),
+                        });
+                        // Reload the GIF one more time to get the speed-adjusted version
+                        setTimeout(() => {
+                            const session = loadSessionInfo();
+                        }, 500);
+                    }
+                    
+                    status.className = 'status idle';
+                    status.textContent = `✓ Captured image ${data.imageCount}`;
+                } else {
+                    throw new Error('Capture failed');
+                }
+            } catch (error) {
+                console.error('Error capturing image:', error);
+                status.className = 'status idle';
+                status.textContent = '❌ Capture failed: ' + error.message;
+            } finally {
+                captureBtn.disabled = false;
+            }
+        }
+        
+        // Update displayed images
+        function updateImages(dirName, latestImage) {
+            const currentImageContainer = document.getElementById('currentImageContainer');
+            const gifContainer = document.getElementById('gifContainer');
+            
+            // Update current image with cache-busting
+            const timestamp = Date.now();
+            currentImageContainer.innerHTML = `
+                <img src="/captures/${dirName}/${latestImage}?t=${timestamp}" alt="Current image">
+            `;
+            
+            // Update GIF
+            gifContainer.innerHTML = `
+                <img id="gifImage" src="/captures/${dirName}/timelapse.gif?t=${timestamp}" alt="Timelapse GIF">
+            `;
+            
+            // Restore playback speed selection
+            document.getElementById('playbackSpeed').value = currentPlaybackSpeed;
+        }
+        
+        // Auto-capture functionality
+        function startAutoCapture() {
+            autoCapture = true;
+            
+            // Capture immediately
+            captureImage();
+            
+            // Set up auto-capture every 30 seconds
+            nextCaptureTime = Date.now() + 30000;
+            updateCountdown();
+            
+            autoTimer = setInterval(() => {
+                captureImage();
+                nextCaptureTime = Date.now() + 30000;
+            }, 30000);
+            
+            countdownTimer = setInterval(updateCountdown, 1000);
+        }
+        
+        function stopAutoCapture() {
+            autoCapture = false;
+            document.getElementById('autoInfo').style.display = 'none';
+            document.getElementById('stopAutoBtn').style.display = 'none';
+            
+            if (autoTimer) {
+                clearInterval(autoTimer);
+                autoTimer = null;
+            }
+            
+            if (countdownTimer) {
+                clearInterval(countdownTimer);
+                countdownTimer = null;
+            }
+        }
+        
+        function updateCountdown() {
+            const remaining = Math.max(0, Math.ceil((nextCaptureTime - Date.now()) / 1000));
+            document.getElementById('countdown').textContent = remaining;
+        }
+        
+        // Event listeners
+        document.getElementById('captureBtn').addEventListener('click', captureImage);
+        document.getElementById('stopAutoBtn').addEventListener('click', stopAutoCapture);
+        document.getElementById('playbackSpeed').addEventListener('change', handlePlaybackSpeedChange);
+        
+        // Handle playback speed changes
+        async function handlePlaybackSpeedChange() {
+            const speed = parseFloat(document.getElementById('playbackSpeed').value);
+            currentPlaybackSpeed = speed; // Store the selected speed
+            
+            // Regenerate GIF with new speed
+            try {
+                const response = await fetch(`/api/generate-gif/${sessionId}`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ speed }),
+                });
+                
+                if (response.ok) {
+                    // Reload the GIF with cache-busting
+                    const gifImage = document.getElementById('gifImage');
+                    if (gifImage) {
+                        const currentSrc = gifImage.src.split('?')[0];
+                        const timestamp = Date.now();
+                        gifImage.src = `${currentSrc}?t=${timestamp}`;
+                    }
+                }
+            } catch (error) {
+                console.error('Error changing playback speed:', error);
+            }
+        }
+        
+        // Initialize
+        loadSessionInfo();
+        
+        // Start auto-capture automatically
+        startAutoCapture();
+    </script>
+</body>
+</html>

@@ -1,0 +1,18 @@
+{
+  "name": "timelapse-url",
+  "version": "1.0.0",
+  "description": "Create timelapse videos from URLs that change over time",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js"
+  },
+  "keywords": ["timelapse", "gif", "image", "capture"],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "express": "^4.18.2",
+    "sharp": "^0.33.2",
+    "gif-encoder-2": "^1.0.5"
+  }
+}
