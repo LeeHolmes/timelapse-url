@@ -207,23 +207,34 @@ app.post('/api/capture/:sessionId', async (req, res) => {
     // Fetch the image with no-cache
     const imageBuffer = await fetchImage(session.url);
     
-    // Save the image
-    const timestamp = Date.now();
-    const imageName = `image_${String(session.captureCount).padStart(5, '0')}_${timestamp}.png`;
-    const imagePath = path.join(session.sessionDir, imageName);
+    // Check if this image is identical to the last captured image
+    let isDuplicate = false;
+    if (session.images.length > 0) {
+      const lastImagePath = path.join(session.sessionDir, session.images[session.images.length - 1]);
+      const lastImageBuffer = await fs.readFile(lastImagePath);
+      isDuplicate = imageBuffer.equals(lastImageBuffer);
+    }
     
-    await fs.writeFile(imagePath, imageBuffer);
-    
-    session.images.push(imageName);
-    session.captureCount++;
-    
-    // Generate updated GIF
-    await generateGif(session.sessionDir, session.images);
+    // Only save if the image is different
+    if (!isDuplicate) {
+      const timestamp = Date.now();
+      const imageName = `image_${String(session.captureCount).padStart(5, '0')}_${timestamp}.png`;
+      const imagePath = path.join(session.sessionDir, imageName);
+      
+      await fs.writeFile(imagePath, imageBuffer);
+      
+      session.images.push(imageName);
+      session.captureCount++;
+      
+      // Generate updated GIF
+      await generateGif(session.sessionDir, session.images);
+    }
     
     res.json({ 
       success: true, 
       imageCount: session.images.length,
-      latestImage: imageName
+      latestImage: session.images[session.images.length - 1],
+      duplicate: isDuplicate
     });
   } catch (error) {
     console.error('Error capturing image:', error);
