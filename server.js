@@ -49,7 +49,14 @@ async function loadExistingSession(sessionDir, url) {
     const files = await fs.readdir(sessionDir);
     const imageFiles = files
       .filter(f => f.startsWith('image_') && f.endsWith('.png'))
-      .sort();
+      .sort((a, b) => {
+        // Extract timestamp from filename: image_NNNNN_timestamp.png
+        const getTimestamp = (filename) => {
+          const parts = filename.replace('.png', '').split('_');
+          return parseInt(parts[parts.length - 1]);
+        };
+        return getTimestamp(a) - getTimestamp(b);
+      });
     
     const captureCount = imageFiles.length;
     
