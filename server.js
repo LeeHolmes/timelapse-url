@@ -118,24 +118,9 @@ async function generateGif(sessionDir, images, delay = 500) {
   
   const gifPath = path.join(sessionDir, 'timelapse.gif');
   
-  // Load first image to get dimensions
-  const firstImagePath = path.join(sessionDir, images[0]);
-  const firstImageMetadata = await sharp(firstImagePath).metadata();
-  
-  const width = firstImageMetadata.width;
-  const height = firstImageMetadata.height;
-  
-  // Create GIF encoder
-  const encoder = new GIFEncoder(width, height);
-  
-  // Create write stream
-  const writeStream = require('fs').createWriteStream(gifPath);
-  encoder.createReadStream().pipe(writeStream);
-  
-  encoder.start();
-  encoder.setRepeat(0); // 0 for repeat, -1 for no-repeat
-  encoder.setDelay(delay); // Variable delay between frames
-  encoder.setQuality(10); // 1-20, lower is better quality
+  // Create GIF encoder (will set dimensions on first valid image)
+  let encoder = null;
+  let writeStream = null;
   
   // Process each image, skipping duplicates
   let previousImagePath = null;
@@ -147,16 +132,35 @@ async function generateGif(sessionDir, images, delay = 500) {
       continue;
     }
     
-    // Read and resize image to consistent dimensions, then convert to raw RGBA
-    const imageBuffer = await sharp(imagePath)
-      .resize(width, height, { fit: 'contain', background: { r: 0, g: 0, b: 0, alpha: 1 } })
-      .ensureAlpha()
-      .raw()
-      .toBuffer();
-    
-    encoder.addFrame(imageBuffer);
-    previousImagePath = imagePath;
+    try {
+      // Get dimensions from first valid image if encoder not yet created
+      if (!encoder) {
+        const metadata = await sharp(imagePath).metadata();
+        encoder = new GIFEncoder(metadata.width, metadata.height);
+        writeStream = require('fs').createWriteStream(gifPath);
+        encoder.createReadStream().pipe(writeStream);
+        encoder.start();
+        encoder.setRepeat(0);
+        encoder.setDelay(delay);
+        encoder.setQuality(10);
+      }
+      
+      // Read and resize image to consistent dimensions, then convert to raw RGBA
+      const imageBuffer = await sharp(imagePath)
+        .resize(encoder.width, encoder.height, { fit: 'contain', background: { r: 0, g: 0, b: 0, alpha: 1 } })
+        .ensureAlpha()
+        .raw()
+        .toBuffer();
+      
+      encoder.addFrame(imageBuffer);
+      previousImagePath = imagePath;
+    } catch (error) {
+      // Skip images that can't be processed
+    }
   }
+  
+  // If no valid images found, return
+  if (!encoder) return null;
   
   encoder.finish();
   
@@ -233,8 +237,12 @@ app.post('/api/capture/:sessionId', async (req, res) => {
       session.images.push(imageName);
       session.captureCount++;
       
-      // Generate updated GIF
-      await generateGif(session.sessionDir, session.images);
+      // Generate updated GIF (don't fail the capture if GIF generation fails)
+      try {
+        await generateGif(session.sessionDir, session.images);
+      } catch (gifError) {
+        // GIF generation failed, but capture was successful
+      }
     }
     
     res.json({ 

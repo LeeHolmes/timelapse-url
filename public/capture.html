@@ -246,7 +246,6 @@
     <div class="header">
         <h1>🎬 Timelapse Capture</h1>
         <div class="url-display" id="urlDisplay">Loading...</div>
-        <div class="info">Images are saved locally in: <span id="dirName">...</span></div>
     </div>
     
     <div class="stats">
@@ -275,7 +274,7 @@
         
         <div class="panel">
             <div class="panel-header">
-                <h2>Timelapse GIF</h2>
+                <h2>Timelapse</h2>
                 <div class="playback-controls">
                     <label for="playbackSpeed">Speed:</label>
                     <select id="playbackSpeed">
@@ -315,13 +314,11 @@
                 const data = await response.json();
                 
                 document.getElementById('urlDisplay').textContent = data.url;
-                document.getElementById('dirName').textContent = `captures/${data.dirName}`;
                 document.getElementById('imageCount').textContent = data.imageCount;
                 
                 // Load latest image and GIF if they exist
                 if (data.imageCount > 0) {
                     updateImages(data.dirName, data.latestImage);
-                    document.getElementById('status').textContent = `${data.imageCount} images already captured - ready for more`;
                 }
             } catch (error) {
                 console.error('Error loading session info:', error);
@@ -341,6 +338,11 @@
                 const response = await fetch(`/api/capture/${sessionId}`, {
                     method: 'POST',
                 });
+                
+                if (!response.ok) {
+                    const data = await response.json();
+                    throw new Error(data.error || 'Capture failed');
+                }
                 
                 const data = await response.json();
                 
@@ -371,7 +373,6 @@
                     throw new Error('Capture failed');
                 }
             } catch (error) {
-                console.error('Error capturing image:', error);
                 status.className = 'status idle';
                 status.textContent = '❌ Capture failed: ' + error.message;
             } finally {
